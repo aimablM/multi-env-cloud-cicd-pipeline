@@ -207,7 +207,8 @@ jobs:
 
 #### Staging Workflow (`deploy-staging.yml`)
 ```yaml
-name: Deploy Staging to AWS EC2
+
+name: Deploy Staging Cloud Portfolio to AWS EC2 Instance
 
 on:
   push:
@@ -217,20 +218,51 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      # Similar structure with staging-specific configurations
-      - name: Build and Push Staging Image
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
+          aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          aws-region: ${{secrets.AWS_REGION}}
+
+      - name: Login to Amazon ECR
         run: |
-          docker build --platform linux/amd64 -t ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:staging .
+          aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{secrets.ECR_REGISTRY}}
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:staging .
+
+      - name: Push Docker Image to ECR
+        run: |
           docker push ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:staging
 
-      - name: Deploy to Staging Environment  
-        # Deploy to port 3001 with container name portfolio-staging
+      - name: SSH into EC2 and Deploy Staging Container
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{secrets.EC2_PUBLIC_IP}}
+          username: ubuntu
+          key: ${{secrets.EC2_SSH_PRIVATE_KEY}}
+          script: |
+            aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{secrets.ECR_REGISTRY}}
+            docker pull ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:staging
+            docker stop portfolio-staging || true
+            docker rm portfolio-staging || true
+            docker network inspect app-network >/dev/null 2>&1 || docker network create app-network
+            docker run -d --name portfolio-staging --restart unless-stopped -p 3001:80 ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:staging
+            docker network connect app-network portfolio-staging
+
 ```
 
 #### Development Workflow (`deploy-dev.yml`)
 ```yaml
-name: Deploy Development to AWS EC2
+
+name: Deploy Development Cloud Portfolio to AWS EC2 Instance
 
 on:
   push:
@@ -240,15 +272,45 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      # Similar structure with dev-specific configurations
-      - name: Build and Push Development Image
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
+          aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          aws-region: ${{secrets.AWS_REGION}}
+
+      - name: Login to Amazon ECR
         run: |
-          docker build --platform linux/amd64 -t ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:dev .
+          aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{secrets.ECR_REGISTRY}}
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:dev .
+
+      - name: Push Docker Image to ECR
+        run: |
           docker push ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:dev
 
-      - name: Deploy to Development Environment
-        # Deploy to port 3002 with container name portfolio-dev
+      - name: SSH into EC2 and Deploy Development Container
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{secrets.EC2_PUBLIC_IP}}
+          username: ubuntu
+          key: ${{secrets.EC2_SSH_PRIVATE_KEY}}
+          script: |
+            aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{secrets.ECR_REGISTRY}}
+            docker pull ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:dev
+            docker stop portfolio-dev || true
+            docker rm portfolio-dev || true
+            docker network inspect app-network >/dev/null 2>&1 || docker network create app-network
+            docker run -d --name portfolio-dev --restart unless-stopped -p 3002:80 ${{secrets.ECR_REGISTRY}}/${{secrets.ECR_REPOSITORY}}:dev
+            docker network connect app-network portfolio-dev
+
 ```
 
 ## Advanced Challenges & Solutions
