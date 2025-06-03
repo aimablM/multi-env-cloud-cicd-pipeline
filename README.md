@@ -611,10 +611,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Contact
 
 - **Name**: Aimable M.
-- **LinkedIn**: [linkedin.com/in/aimable-m-920608107](https://linkedin.com/in/aimablem)
+- **LinkedIn**: [linkedin.com/in/aimablem](https://linkedin.com/in/aimablem)
 - **GitHub**: [github.com/aimablM](https://github.com/aimablM)
 - **Website**: [aimablem.dev](https://aimablem.dev)
 
 ---
 
-*This documentation represents a comprehensive implementation of modern DevOps practices and serves as both a technical reference and a demonstration of cloud engineering expertise suitable for enterprise environments.*
+*This documentation represents an implementation of modern DevOps practices and serves as both a technical reference and a demonstration of cloud engineering expertise suitable for enterprise environments.*
